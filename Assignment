@@ -1,0 +1,59 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
+
+void child_handler(int signum) {
+    // Do nothing, just interrupt the system call
+}
+
+int main() {
+    int n; // Number of processes
+    printf("Enter the number of processes: ");
+    scanf("%d", &n);
+
+    int burst_time[n];
+    int arrival_time[n];
+
+    // Input burst time and arrival time
+    for (int i = 0; i < n; ++i) {
+        printf("Enter burst time for process %d: ", i + 1);
+        scanf("%d", &burst_time[i]);
+        printf("Enter arrival time for process %d: ", i + 1);
+        scanf("%d", &arrival_time[i]);
+    }
+
+    int total_waiting_time = 0;
+
+    for (int i = 0; i < n; ++i) {
+        pid_t pid = fork();
+
+        if (pid == -1) {
+            perror("Fork error");
+            exit(EXIT_FAILURE);
+        }
+
+        if (pid == 0) {
+            // Child process
+            alarm(burst_time[i]); // Set an alarm to limit the execution time
+            printf("Process %d started\n", i + 1);
+            sleep(burst_time[i]); // Simulate process execution
+            printf("Process %d completed\n", i + 1);
+            exit(EXIT_SUCCESS);
+        } else {
+            // Parent process
+            struct sigaction sa;
+            sa.sa_handler = child_handler;
+            sigaction(SIGCHLD, &sa, NULL);
+
+            wait(NULL); // Wait for the child process to complete
+            printf("Waiting time for process %d: %d milliseconds\n", i + 1, total_waiting_time);
+            total_waiting_time += burst_time[i];
+        }
+    }
+
+    printf("Total waiting time for all processes: %d milliseconds\n", total_waiting_time);
+
+    return 0;
+}
